@@ -221,7 +221,9 @@ on("create-circle", "submit", async () => {
   $("create-circle").reset(); updateRecipient(); await loadCircles(id); message("Care circle created.");
 });
 on("join-circle", "submit", async () => {
-  const id = await checked(db.rpc("join_care_circle", { invitation: $("invite-code").value.trim() }));
+  const result = await checked(db.rpc("join_care_circle", { invitation: $("invite-code").value.trim().toUpperCase() }));
+  if (result?.error) throw new Error(result.error);
+  const id = result?.circle_id || result;
   $("join-circle").reset(); await loadCircles(id); message("Joined care circle.");
 });
 on("circle-select", "change", () => selectCircle($("circle-select").value));
