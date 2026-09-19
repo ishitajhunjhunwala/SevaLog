@@ -41,19 +41,21 @@ Use fictional care information during testing.
 5. B cannot delete A's entries. A, as owner, can delete any entry in the circle. B can delete B's own entries.
 6. Create a separate circle as B. A must not see it in the circle selector. Invalid invitation codes must fail. Generating a new code invalidates the old one; codes expire after seven days.
 7. Turn the network off, try adding a note, and confirm the app reports a failure without clearing your input. Reconnect and retry once. There is no offline write queue.
-8. Export a backup and import it into a separate test circle. Import it again: imported entries should not duplicate. Importing into a circle makes those updates visible to all its members.
+8. Copy an invitation code and paste it to verify the exact code. Use its WhatsApp button and verify the message contains the circle name, code, and hosted app URL. Create a circle using Myself and confirm your name is filled in Care details.
 9. Sign out. The timeline and digest must disappear. Test Forgot password after configuring SMTP.
 
 ## Existing device data
 
-Old logs are not automatically uploaded. After choosing a circle, use Import old phone logs at the SAME URL/browser where you used the original app. The original local copy remains untouched. For another URL or phone, export a JSON backup from the old app first, then use Import backup. Changing domains does not transfer browser storage.
+Backup export, import, and phone-log migration controls have been removed from the MVP. Existing Supabase records are unchanged. Old browser-only data is not deleted or uploaded by this update.
 
 ## Behavior and boundaries
 
 - Updates refresh every 15 seconds while visible, on returning to the tab, and using Refresh updates. This MVP uses polling, not Supabase Realtime.
 - Only members can read a circle or its entries. Only the owner can rename the elder or create invitation codes. Membership can only be added through a valid invitation or circle creation.
 - Invitations are reusable for seven days until replaced. Replacing an invitation does not remove members who already joined. Member removal and ownership transfer are not yet included.
-- Each entry records the authenticated author's ID; caregiver names are display labels. Imported entries are attributed to the importing account, retaining the original caregiver label.
+- Each entry records the authenticated author's ID; Your name is a display label. Myself uses the creator's name for the care circle and their updates; no separate account type is required.
+- Invitations have a copy-code button and WhatsApp sharing. `config.js` contains `appUrl`, the public address included in invitations; update it when changing domains.
+- Create/join and care details are collapsible. Quick update and Detailed update are separate sections; required fields have an asterisk. Mobile inputs retain 16px text to avoid focus zoom on iPhones.
 - Care dates use the logging device's local date/time. There is no shared circle timezone yet.
 - Quick actions fill the form and require explicit submission; they do not automatically record medication as taken.
 - Logs live in Supabase. The Supabase SDK stores the login session in the browser; the app does not cache shared logs in localStorage.

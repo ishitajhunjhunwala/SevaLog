@@ -2,6 +2,7 @@ const $ = (id) => document.getElementById(id);
 const types = { medicine: "Medicine", meal: "Meal", vitals: "Vitals", appointment: "Appointment", note: "Note" };
 let db, user, circle;
 let circles = [], entries = [];
+let invitationToken = "";
 let generation = 0, busy = false, recovery = false;
 const today = () => {
   const d = new Date();
@@ -45,7 +46,10 @@ function clearCare() {
   entries = [];
   $("care-workspace").hidden = true;
   $("invite-tools").hidden = true;
-  $("invite-result").textContent = "";
+  invitationToken = "";
+  $("invite-result").hidden = true;
+  $("invitation-code").textContent = "";
+  $("invite-message").textContent = "";
   $("timeline").replaceChildren();
   $("digest-preview").textContent = "";
   $("profile-form").reset();
@@ -62,6 +66,9 @@ async function sessionChanged(session) {
   $("sign-out").hidden = !user;
   $("auth-panel").hidden = !!user;
   $("circle-panel").hidden = !user || recovery;
+  $("circle-setup").open = true;
+  $("create-circle").reset();
+  updateRecipient();
   if (!user) { message("Sign in or create an account."); return; }
   await loadCircles();
 }
@@ -81,9 +88,11 @@ async function selectCircle(id) {
   circle = circles.find((item) => item.id === id);
   $("circle-select").value = circle?.id || "";
   if (!circle) return;
+  $("circle-setup").open = false;
   $("elder-name").value = circle.elder_name;
   $("elder-name").disabled = circle.owner_id !== user.id;
   $("caregiver-name").value = user.user_metadata?.display_name || "";
+  $("profile-details").open = !$("caregiver-name").value;
   $("entry-time").value = timeNow();
   $("care-workspace").hidden = false;
   $("invite-tools").hidden = circle.owner_id !== user.id;
@@ -160,7 +169,10 @@ function validateEntry(entry) {
 }
 async function addEntry() {
   const caregiver = $("caregiver-name").value.trim();
-  if (!circle || !caregiver) throw new Error("Enter your caregiver name first.");
+  if (!circle || !caregiver) {
+    $("profile-details").open = true;
+    throw new Error("Enter your name in Care details first.");
+  }
   const entry = validateEntry({ circle_id: circle.id, author_id: user.id, caregiver,
     type: $("entry-type").value, title: $("entry-title").value.trim(), note: $("entry-note").value.trim(),
     entry_date: today(), entry_time: $("entry-time").value || timeNow() });
@@ -168,19 +180,12 @@ async function addEntry() {
   $("entry-form").reset(); $("entry-time").value = timeNow();
   message("Update saved for your family."); await refresh();
 }
-async function importBackup(parsed) {
-  if (!circle || !Array.isArray(parsed.entries) || parsed.entries.length > 5000) throw new Error("Invalid backup (maximum 5,000 entries).");
-  const rows = parsed.entries.map((entry) => validateEntry({
-    circle_id: circle.id, author_id: user.id, caregiver: String(entry.caregiver || "Imported caregiver").slice(0, 100),
-    type: entry.type, title: entry.title, note: entry.note || "",
-    entry_date: entry.entry_date || entry.date, entry_time: entry.entry_time || entry.time,
-    source_id: String(entry.source_id || entry.id || "")
-  }));
-  if (rows.some((row) => !row.source_id || row.source_id.length > 100)) throw new Error("Backup entries must have valid IDs.");
-  if (!confirm(`Import ${rows.length} updates into ${circle.elder_name}? All circle members will see them.`)) return;
-  await checked(db.from("care_entries").upsert(rows, { onConflict: "circle_id,source_id", ignoreDuplicates: true }));
-  message("Backup imported. Existing imported entries were skipped."); await refresh();
+function updateRecipient() {
+  const self = document.querySelector('[name="care-for"]:checked').value === "self";
+  $("new-elder-label").textContent = self ? "Your name *" : "Their name *";
+  $("new-elder").value = self ? user?.user_metadata?.display_name || "" : "";
 }
+document.querySelectorAll('[name="care-for"]').forEach((input) => input.addEventListener("change", updateRecipient));
 on("auth-form", "submit", async () => {
   await checked(db.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value }));
   $("password").value = "";
@@ -206,8 +211,14 @@ on("sign-out", "click", async () => {
   await sessionChanged(null);
 });
 on("create-circle", "submit", async () => {
-  const id = await checked(db.rpc("create_care_circle", { elder: $("new-elder").value.trim() }));
-  $("create-circle").reset(); await loadCircles(id); message("Care circle created.");
+  const name = $("new-elder").value.trim();
+  if (!name) throw new Error("Enter a name for the care circle.");
+  if (document.querySelector('[name="care-for"]:checked').value === "self") {
+    const data = await checked(db.auth.updateUser({ data: { display_name: name } }));
+    user = data.user;
+  }
+  const id = await checked(db.rpc("create_care_circle", { elder: name }));
+  $("create-circle").reset(); updateRecipient(); await loadCircles(id); message("Care circle created.");
 });
 on("join-circle", "submit", async () => {
   const id = await checked(db.rpc("join_care_circle", { invitation: $("invite-code").value.trim() }));
@@ -215,17 +226,32 @@ on("join-circle", "submit", async () => {
 });
 on("circle-select", "change", () => selectCircle($("circle-select").value));
 on("make-invite", "click", async () => {
-  const token = await checked(db.rpc("create_circle_invite", { target: circle.id }));
-  $("invite-result").textContent = `Invitation code: ${token} (valid for 7 days; replaces any previous code). Share only with family members you want to join.`;
+  invitationToken = await checked(db.rpc("create_circle_invite", { target: circle.id }));
+  $("invitation-code").textContent = invitationToken;
+  $("invite-message").textContent = `Join the care circle for ${circle.elder_name} on SevaLog.`;
+  $("invite-result").hidden = false;
+});
+on("copy-invite", "click", async () => {
+  if (!invitationToken) return;
+  try { await navigator.clipboard.writeText(invitationToken); message("Invitation code copied."); }
+  catch { message("Could not copy. Select the invitation code and copy it manually.", true); }
+});
+on("share-invite", "click", () => {
+  if (!invitationToken) return;
+  const url = window.SEVALOG_CONFIG.appUrl || location.origin + location.pathname;
+  const text = `Join the care circle for ${circle.elder_name} on SevaLog.\n\n${url}\n\nSign in or create an account, then choose Join circle and enter this invitation code:\n${invitationToken}\n\nThis code expires in 7 days.`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
 });
 on("profile-form", "submit", async () => {
   const name = $("caregiver-name").value.trim();
-  if (!name) throw new Error("Enter your caregiver name.");
+  if (!name) throw new Error("Enter your name.");
   const data = await checked(db.auth.updateUser({ data: { display_name: name } })); user = data.user;
   if (circle.owner_id === user.id) {
     const updated = await checked(db.from("care_circles").update({ elder_name: $("elder-name").value.trim() }).eq("id", circle.id).select().single());
     circle.elder_name = updated.elder_name; $("circle-select").selectedOptions[0].textContent = circle.elder_name;
   }
+  if (invitationToken) $("invite-message").textContent = `Join the care circle for ${circle.elder_name} on SevaLog.`;
+  $("profile-details").open = false;
   render(); message("Care details saved.");
 });
 on("entry-form", "submit", addEntry);
@@ -234,23 +260,7 @@ on("clear-form", "click", () => { $("entry-form").reset(); $("entry-time").value
 $("filter-type").addEventListener("change", render);
 on("copy-digest", "click", async () => { await navigator.clipboard.writeText(digest()); message("Digest copied."); });
 on("share-whatsapp", "click", () => { window.open(`https://wa.me/?text=${encodeURIComponent(digest())}`, "_blank", "noopener,noreferrer"); });
-on("export-data", "click", () => {
-  const url = URL.createObjectURL(new Blob([JSON.stringify({ profile: { elderName: circle.elder_name }, entries }, null, 2)], { type: "application/json" }));
-  const anchor = document.createElement("a"); anchor.href = url; anchor.download = `sevalog-${today()}.json`; anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-});
-on("import-data", "change", async (event) => {
-  const file = event.target.files[0]; event.target.value = "";
-  if (!file) return;
-  if (file.size > 10000000) throw new Error("Backup is too large (maximum 10 MB).");
-  await importBackup(JSON.parse(await file.text()));
-});
-on("migrate-data", "click", async () => {
-  const raw = localStorage.getItem("sevalog:mvp");
-  if (!raw) throw new Error("No old phone logs at this address. Import an exported backup instead.");
-  await importBackup(JSON.parse(raw));
-});
-[["medicine", "Gave medicine"], ["meal", "Meal update"], ["vitals", "Checked blood pressure"], ["appointment", "Doctor appointment"]].forEach(([type, title]) => {
+[["medicine", "Medicine taken"], ["meal", "Meal update"], ["vitals", "Checked blood pressure"], ["appointment", "Doctor appointment"]].forEach(([type, title]) => {
   const button = document.createElement("button"); button.type = "button"; button.className = "quick-action"; button.textContent = title;
   button.addEventListener("click", () => {
     $("entry-type").value = type; $("entry-title").value = title; $("entry-time").value = timeNow(); $("entry-note").focus();
@@ -258,6 +268,7 @@ on("migrate-data", "click", async () => {
   $("quick-actions").append(button);
 });
 async function start() {
+  window.lucide?.createIcons();
   const config = window.SEVALOG_CONFIG || {};
   if (!config.supabaseUrl || !config.supabasePublishableKey) {
     message("SevaLog is not connected yet. The site owner needs to finish setup.", true); return;

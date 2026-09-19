@@ -48,13 +48,31 @@
         </form>
         <section id="circle-panel" hidden>
           <label>Care circle<select id="circle-select"><option value="">Choose a circle</option></select></label>
+          <details id="circle-setup" open>
+          <summary>Create or join a circle</summary>
           <div class="circle-forms">
-            <form id="create-circle"><label>Elder name<input id="new-elder" required maxlength="100" /></label><button class="primary-button">Create circle</button></form>
+            <form id="create-circle">
+              <fieldset class="choice"><legend>Who is this care circle for?</legend>
+                <label><input type="radio" name="care-for" value="self" /> Myself</label>
+                <label><input type="radio" name="care-for" value="other" checked /> Someone else</label>
+              </fieldset>
+              <label><span id="new-elder-label">Their name *</span><input id="new-elder" required maxlength="100" /></label>
+              <button class="primary-button">Create circle</button>
+            </form>
             <form id="join-circle"><label>Invitation code<input id="invite-code" required autocomplete="off" /></label><button class="secondary-button">Join circle</button></form>
           </div>
+          </details>
           <div id="invite-tools" hidden>
             <button id="make-invite" class="secondary-button" type="button">Create invitation code</button>
-            <p id="invite-result"></p>
+            <div id="invite-result" hidden>
+              <p id="invite-message"></p>
+              <div class="invitation-actions">
+                <code id="invitation-code"></code>
+                <button id="copy-invite" class="icon-button" type="button" title="Copy invitation code" aria-label="Copy invitation code"><i data-lucide="copy" aria-hidden="true"></i></button>
+                <button id="share-invite" class="secondary-button" type="button"><i data-lucide="share-2" aria-hidden="true"></i> WhatsApp</button>
+              </div>
+              <small>Expires in 7 days. A new code replaces the previous one.</small>
+            </div>
           </div>
           <button id="refresh" class="ghost-button" type="button">Refresh updates</button>
         </section>
@@ -70,17 +88,19 @@
               <span class="status-pill" id="sync-status">Connecting</span>
             </div>
 
+            <details id="profile-details" open><summary>Care details</summary>
             <form class="profile-form" id="profile-form">
               <label>
-                Elder name
+                Care circle for *
                 <input id="elder-name" name="elderName" autocomplete="off" placeholder="Amma" required maxlength="100" />
               </label>
               <label>
-                Caregiver
+                Your name *
                 <input id="caregiver-name" name="caregiverName" autocomplete="name" placeholder="Meera" required maxlength="100" />
               </label>
-              <button class="primary-button" type="submit">Save care circle</button>
+              <button class="primary-button" type="submit">Save details</button>
             </form>
+            </details>
 
             <div class="stats" aria-label="Today summary">
               <div>
@@ -101,14 +121,14 @@
           <section class="panel log-panel" aria-labelledby="quick-title">
             <div class="panel-heading">
               <div>
-                <p class="eyebrow">Quick log</p>
-                <h2 id="quick-title">Record what happened</h2>
+                <h2 id="quick-title">Quick update</h2>
               </div>
               <button class="secondary-button" id="clear-form" type="button">Clear</button>
             </div>
 
             <div class="quick-actions" id="quick-actions" aria-label="Quick care updates"></div>
 
+            <h2 class="detail-heading">Detailed update</h2>
             <form class="entry-form" id="entry-form">
               <div class="split">
                 <label>
@@ -128,21 +148,23 @@
               </div>
 
               <label>
-                Update
-                <input id="entry-title" name="title" autocomplete="off" placeholder="Gave BP tablet" required />
+                Update *
+                <input id="entry-title" name="title" autocomplete="off" placeholder="Medicine taken after breakfast" required maxlength="300" />
               </label>
 
               <label>
-                Details
+                Details (optional)
                 <textarea
                   id="entry-note"
                   name="note"
                   rows="3"
+                  maxlength="4000"
                   placeholder="Dose, reading, doctor name, food notes, or anything family should know"
                 ></textarea>
               </label>
 
               <button class="primary-button wide" type="submit">Add to timeline</button>
+              <small>* Required fields</small>
             </form>
           </section>
         </section>
@@ -171,14 +193,6 @@
           <ol class="timeline" id="timeline" aria-live="polite"></ol>
         </section>
 
-        <section class="utility-row" aria-label="Data utilities">
-          <button class="ghost-button" id="export-data" type="button">Export backup</button>
-          <label class="file-button">
-            Import backup
-            <input id="import-data" type="file" accept="application/json" />
-          </label>
-          <button class="ghost-button" id="migrate-data" type="button">Import old phone logs</button>
-        </section>
         </div>
       </section>
     </main>
@@ -192,6 +206,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js" defer></script>
     <script src="config.js" defer></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>
