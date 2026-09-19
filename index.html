@@ -1,212 +1,94 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      name="description"
-      content="A lightweight family caregiving log for recording daily updates and sharing WhatsApp digests."
-    />
-    <title>SevaLog Care Dashboard</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <main class="shell">
-      <section class="workspace" aria-labelledby="app-title">
-        <header class="topbar">
-          <div class="brand">
-            <div class="mark" aria-hidden="true">
-              <svg viewBox="0 0 32 32" role="img">
-                <path d="M16 4c4.1 3.3 8.2 3.8 11 4.1v7.3c0 6.2-4 10.4-11 12.6C9 25.8 5 21.6 5 15.4V8.1C7.8 7.8 11.9 7.3 16 4Z" />
-                <path d="M11 16h10M16 11v10" />
-              </svg>
-            </div>
-            <div>
-              <p class="eyebrow">Family care log</p>
-              <h1 id="app-title">SevaLog</h1>
-            </div>
-          </div>
-          <div><span id="account-email"></span> <button class="ghost-button" id="sign-out" type="button" hidden>Sign out</button></div>
-        </header>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="A shared family care log for daily updates and WhatsApp summaries." />
+  <title>SevaLog</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><div class="mark" aria-hidden="true"><i data-lucide="heart-handshake"></i></div><div><p class="eyebrow">Family care log</p><h1>SevaLog</h1></div></div>
+      <details id="account-menu" hidden>
+        <summary><i data-lucide="circle-user-round" aria-hidden="true"></i> Account</summary>
+        <div class="account-popover"><span id="account-email"></span><button id="edit-details" class="ghost-button" type="button" hidden>Care details</button><button class="ghost-button" id="sign-out" type="button" hidden>Sign out</button></div>
+      </details>
+    </header>
+    <nav id="app-nav" aria-label="Main navigation" hidden>
+      <a href="#circles" data-view="circles"><i data-lucide="users-round" aria-hidden="true"></i><span>Circles</span></a>
+      <a href="#today" data-view="today"><i data-lucide="sun" aria-hidden="true"></i><span>Today</span></a>
+      <a href="#timeline" data-view="timeline"><i data-lucide="list-checks" aria-hidden="true"></i><span>Timeline</span></a>
+    </nav>
+    <div class="page-content">
+      <p id="message" role="status" aria-live="polite">Connecting...</p>
+      <section id="auth-panel" hidden>
+        <h2>Sign in to your care circle</h2>
+        <form id="auth-form">
+          <label>Email<input id="email" type="email" autocomplete="email" required /></label>
+          <label>Password<input id="password" type="password" autocomplete="current-password" minlength="8" required /></label>
+          <div class="toolbar"><button class="primary-button" type="submit">Sign in</button><button class="secondary-button" id="sign-up" type="button">Create account</button><button class="ghost-button" id="forgot-password" type="button">Forgot password</button></div>
+        </form>
+      </section>
+      <form id="recovery-form" hidden><label>New password<input id="new-password" type="password" autocomplete="new-password" minlength="8" required /></label><button class="primary-button">Update password</button></form>
 
-        <p id="message" role="status" aria-live="polite">Connecting...</p>
-        <section id="auth-panel" hidden>
-          <h2>Sign in to your care circle</h2>
-          <form id="auth-form">
-            <label>Email<input id="email" type="email" autocomplete="email" required /></label>
-            <label>Password<input id="password" type="password" autocomplete="current-password" minlength="8" required /></label>
-            <div class="toolbar">
-              <button class="primary-button" type="submit">Sign in</button>
-              <button class="secondary-button" id="sign-up" type="button">Create account</button>
-              <button class="ghost-button" id="forgot-password" type="button">Forgot password</button>
-            </div>
+      <div id="circle-context" hidden>
+        <label>Care for<select id="circle-select" aria-label="Care for"><option value="">Choose a circle</option></select></label>
+        <div class="context-actions"><span class="status-pill" id="sync-status">Connecting</span><button id="refresh" class="icon-button" type="button" title="Refresh updates" aria-label="Refresh updates"><i data-lucide="refresh-cw" aria-hidden="true"></i></button></div>
+      </div>
+
+      <section id="circle-panel" aria-labelledby="circles-title" hidden>
+        <div class="page-heading"><h2 id="circles-title" tabindex="-1">Your care circles</h2><div class="toolbar"><button id="show-create" class="primary-button" type="button"><i data-lucide="plus" aria-hidden="true"></i> Create circle</button><button id="show-join" class="secondary-button" type="button">Join circle</button></div></div>
+        <p id="circles-empty" class="empty-state" hidden>No circles yet. Create one for yourself or someone else, or join your family.</p>
+        <div id="circle-list" class="circle-list"></div>
+      </section>
+
+      <section id="care-workspace" aria-labelledby="today-title" hidden>
+        <div class="page-heading"><h2 id="today-title" tabindex="-1">Today</h2><button id="view-timeline" class="secondary-button" type="button" hidden>View in timeline</button></div>
+        <section class="today-summary" aria-labelledby="setup-title"><h3 id="setup-title">Today at a glance</h3>
+          <div class="stats"><div><span id="today-count">0</span><p>updates today</p></div><div><span id="med-count">0</span><p>medicine logs</p></div><div><span id="last-log">No logs yet</span><p>last update</p></div></div>
+        </section>
+        <section class="log-panel" aria-labelledby="quick-title">
+          <h3 id="quick-title">Quick update</h3><div class="quick-actions" id="quick-actions" aria-label="Quick care updates"></div>
+          <div class="panel-heading detail-heading"><h3>Detailed update</h3><button class="secondary-button" id="clear-form" type="button">Clear</button></div>
+          <form class="entry-form" id="entry-form">
+            <div class="split"><label>Type<select id="entry-type"><option value="medicine">Medicine</option><option value="meal">Meal</option><option value="vitals">Vitals</option><option value="appointment">Appointment</option><option value="note">Note</option></select></label><label>Time<input id="entry-time" type="time" /></label></div>
+            <label>Update *<input id="entry-title" autocomplete="off" placeholder="Medicine taken after breakfast" required maxlength="300" /></label>
+            <label>Details (optional)<textarea id="entry-note" rows="3" maxlength="4000" placeholder="Dose, reading, food notes, or anything family should know"></textarea></label>
+            <button class="primary-button" type="submit">Add to timeline</button><small>* Required fields</small>
           </form>
         </section>
-        <form id="recovery-form" hidden>
-          <label>New password<input id="new-password" type="password" autocomplete="new-password" minlength="8" required /></label>
-          <button class="primary-button">Update password</button>
-        </form>
-        <section id="circle-panel" hidden>
-          <label>Care circle<select id="circle-select"><option value="">Choose a circle</option></select></label>
-          <details id="circle-setup" open>
-          <summary>Create or join a circle</summary>
-          <div class="circle-forms">
-            <form id="create-circle">
-              <fieldset class="choice"><legend>Who is this care circle for?</legend>
-                <label><input type="radio" name="care-for" value="self" /> Myself</label>
-                <label><input type="radio" name="care-for" value="other" checked /> Someone else</label>
-              </fieldset>
-              <label><span id="new-elder-label">Their name *</span><input id="new-elder" required maxlength="100" /></label>
-              <button class="primary-button">Create circle</button>
-            </form>
-            <form id="join-circle"><label>Invitation code<input id="invite-code" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7PM" minlength="4" maxlength="4" pattern="[A-Za-z2-9]{4}" /></label><button class="secondary-button">Join circle</button></form>
-          </div>
-          </details>
-          <div id="invite-tools" hidden>
-            <button id="make-invite" class="secondary-button" type="button">Create invitation code</button>
-            <div id="invite-result" hidden>
-              <p id="invite-message"></p>
-              <div class="invitation-actions">
-                <code id="invitation-code"></code>
-                <button id="copy-invite" class="icon-button" type="button" title="Copy invitation code" aria-label="Copy invitation code"><i data-lucide="copy" aria-hidden="true"></i></button>
-                <button id="share-invite" class="secondary-button" type="button"><i data-lucide="share-2" aria-hidden="true"></i> WhatsApp</button>
-              </div>
-              <small>Expires in 7 days. A new code replaces the previous one.</small>
-            </div>
-          </div>
-          <button id="refresh" class="ghost-button" type="button">Refresh updates</button>
-        </section>
+      </section>
 
-        <div id="care-workspace" hidden>
-        <section class="grid">
-          <aside class="panel setup-panel" aria-labelledby="setup-title">
-            <div class="panel-heading">
-              <div>
-                <p class="eyebrow">Care circle</p>
-                <h2 id="setup-title">Today at a glance</h2>
-              </div>
-              <span class="status-pill" id="sync-status">Connecting</span>
-            </div>
-
-            <details id="profile-details" open><summary>Care details</summary>
-            <form class="profile-form" id="profile-form">
-              <label>
-                Care circle for *
-                <input id="elder-name" name="elderName" autocomplete="off" placeholder="Amma" required maxlength="100" />
-              </label>
-              <label>
-                Your name *
-                <input id="caregiver-name" name="caregiverName" autocomplete="name" placeholder="Meera" required maxlength="100" />
-              </label>
-              <button class="primary-button" type="submit">Save details</button>
-            </form>
-            </details>
-
-            <div class="stats" aria-label="Today summary">
-              <div>
-                <span id="today-count">0</span>
-                <p>updates today</p>
-              </div>
-              <div>
-                <span id="med-count">0</span>
-                <p>medicine logs</p>
-              </div>
-              <div>
-                <span id="last-log">No logs yet</span>
-                <p>last update</p>
-              </div>
-            </div>
-          </aside>
-
-          <section class="panel log-panel" aria-labelledby="quick-title">
-            <div class="panel-heading">
-              <div>
-                <h2 id="quick-title">Quick update</h2>
-              </div>
-              <button class="secondary-button" id="clear-form" type="button">Clear</button>
-            </div>
-
-            <div class="quick-actions" id="quick-actions" aria-label="Quick care updates"></div>
-
-            <h2 class="detail-heading">Detailed update</h2>
-            <form class="entry-form" id="entry-form">
-              <div class="split">
-                <label>
-                  Type
-                  <select id="entry-type" name="type">
-                    <option value="medicine">Medicine</option>
-                    <option value="meal">Meal</option>
-                    <option value="vitals">Vitals</option>
-                    <option value="appointment">Appointment</option>
-                    <option value="note">Note</option>
-                  </select>
-                </label>
-                <label>
-                  Time
-                  <input id="entry-time" name="time" type="time" />
-                </label>
-              </div>
-
-              <label>
-                Update *
-                <input id="entry-title" name="title" autocomplete="off" placeholder="Medicine taken after breakfast" required maxlength="300" />
-              </label>
-
-              <label>
-                Details (optional)
-                <textarea
-                  id="entry-note"
-                  name="note"
-                  rows="3"
-                  maxlength="4000"
-                  placeholder="Dose, reading, doctor name, food notes, or anything family should know"
-                ></textarea>
-              </label>
-
-              <button class="primary-button wide" type="submit">Add to timeline</button>
-              <small>* Required fields</small>
-            </form>
-          </section>
-        </section>
-
-        <section class="panel timeline-panel" aria-labelledby="timeline-title">
-          <div class="panel-heading stacked">
-            <div>
-              <p class="eyebrow">Family visibility</p>
-              <h2 id="timeline-title">Care timeline</h2>
-            </div>
-            <div class="toolbar" role="toolbar" aria-label="Timeline actions">
-              <select id="filter-type" aria-label="Filter timeline">
-                <option value="all">All updates</option>
-                <option value="medicine">Medicine</option>
-                <option value="meal">Meal</option>
-                <option value="vitals">Vitals</option>
-                <option value="appointment">Appointments</option>
-                <option value="note">Notes</option>
-              </select>
-              <button class="secondary-button" id="copy-digest" type="button">Copy digest</button>
-              <button class="primary-button" id="share-whatsapp" type="button">Share on WhatsApp</button>
-            </div>
-          </div>
-
-          <div class="digest-preview" id="digest-preview" aria-live="polite"></div>
-          <ol class="timeline" id="timeline" aria-live="polite"></ol>
-        </section>
-
+      <section id="timeline-page" aria-labelledby="timeline-title" hidden>
+        <div class="page-heading"><h2 id="timeline-title" tabindex="-1">Care timeline</h2><select id="filter-type" aria-label="Filter timeline"><option value="all">All updates</option><option value="medicine">Medicine</option><option value="meal">Meal</option><option value="vitals">Vitals</option><option value="appointment">Appointments</option><option value="note">Notes</option></select></div>
+        <div class="timeline-layout"><ol class="timeline" id="timeline" aria-live="polite"></ol>
+          <aside class="digest-section" aria-labelledby="digest-title"><h3 id="digest-title">Today's family update</h3><div class="digest-preview" id="digest-preview"></div><div class="toolbar"><button class="secondary-button" id="copy-digest" type="button"><i data-lucide="copy" aria-hidden="true"></i> Copy digest</button><button class="primary-button" id="share-whatsapp" type="button">Share on WhatsApp</button></div></aside>
         </div>
       </section>
-    </main>
+    </div>
+  </main>
 
-    <template id="timeline-empty">
-      <li class="empty-state">
-        <h3>No care updates yet</h3>
-        <p>Add the first update above. The WhatsApp digest will build itself from today's entries.</p>
-      </li>
-    </template>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js" defer></script>
-    <script src="config.js" defer></script>
-    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="app.js" defer></script>
-  </body>
+  <dialog id="circle-setup" aria-labelledby="circle-dialog-title">
+    <div class="panel-heading"><h2 id="circle-dialog-title">Create circle</h2><button class="icon-button" data-close="circle-setup" title="Close" aria-label="Close" type="button"><i data-lucide="x" aria-hidden="true"></i></button></div>
+    <form id="create-circle"><fieldset class="choice"><legend>Who is this care circle for?</legend><label><input type="radio" name="care-for" value="self" /> Myself</label><label><input type="radio" name="care-for" value="other" checked /> Someone else</label></fieldset><label><span id="new-elder-label">Their name *</span><input id="new-elder" required maxlength="100" /></label><button class="primary-button">Create circle</button><small>* Required fields</small></form>
+    <form id="join-circle" hidden><label>Invitation code<input id="invite-code" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7PM" minlength="4" maxlength="4" pattern="[A-Za-z2-9]{4}" /></label><button class="primary-button">Join circle</button></form>
+  </dialog>
+  <dialog id="invite-tools" aria-labelledby="invite-title">
+    <div class="panel-heading"><h2 id="invite-title">Invite family</h2><button class="icon-button" data-close="invite-tools" title="Close" aria-label="Close" type="button"><i data-lucide="x" aria-hidden="true"></i></button></div>
+    <button id="make-invite" class="secondary-button" type="button">Create invitation code</button>
+    <div id="invite-result" hidden><p id="invite-message"></p><div class="invitation-actions"><code id="invitation-code"></code><button id="copy-invite" class="icon-button" type="button" title="Copy invitation code" aria-label="Copy invitation code"><i data-lucide="copy" aria-hidden="true"></i></button><button id="share-invite" class="secondary-button" type="button"><i data-lucide="share-2" aria-hidden="true"></i> WhatsApp</button></div><small>Expires in 7 days. A new code replaces the previous one.</small></div>
+  </dialog>
+  <dialog id="profile-details" aria-labelledby="profile-title">
+    <div class="panel-heading"><h2 id="profile-title">Care details</h2><button class="icon-button" data-close="profile-details" title="Close" aria-label="Close" type="button"><i data-lucide="x" aria-hidden="true"></i></button></div>
+    <p id="profile-message"></p>
+    <form id="profile-form"><label>Care circle for *<input id="elder-name" required maxlength="100" /></label><label>Your name *<input id="caregiver-name" autocomplete="name" required maxlength="100" /></label><button class="primary-button" type="submit">Save details</button><small>* Required fields</small></form>
+  </dialog>
+  <template id="timeline-empty"><li class="empty-state"><h3>No care updates yet</h3><p>Record your first update in Today.</p></li></template>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js" defer></script>
+  <script src="config.js" defer></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
 </html>

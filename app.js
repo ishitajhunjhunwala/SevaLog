@@ -3,6 +3,81 @@ const types = { medicine: "Medicine", meal: "Meal", vitals: "Vitals", appointmen
 let db, user, circle;
 let circles = [], entries = [];
 let invitationToken = "";
+let activeView = "circles";
+const views = { circles: "circle-panel", today: "care-workspace", timeline: "timeline-page" };
+function preferences() {
+  try { return JSON.parse(localStorage.getItem(`sevalog:view:${user.id}`)) || {}; } catch { return {}; }
+}
+function rememberView() {
+  if (!user) return;
+  try { localStorage.setItem(`sevalog:view:${user.id}`, JSON.stringify({ view: activeView, circle: circle?.id })); } catch { /* Navigation still works without browser storage. */ }
+}
+function showView(view, navigate = false) {
+  activeView = views[view] ? view : "circles";
+  if (!circle && activeView !== "circles") activeView = "circles";
+  const signedIn = !!user && !recovery;
+  $("app-nav").hidden = !signedIn;
+  document.querySelector(".shell").classList.toggle("signed-in", signedIn);
+  Object.entries(views).forEach(([name, id]) => { $(id).hidden = !signedIn || name !== activeView; });
+  $("circle-context").hidden = !signedIn || activeView === "circles" || !circle;
+  $("edit-details").hidden = !circle;
+  document.querySelectorAll("[data-view]").forEach((link) => {
+    if (link.dataset.view === activeView) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+  if (signedIn) {
+    rememberView();
+    if (navigate && location.hash !== `#${activeView}`) history.pushState(null, "", `#${activeView}`);
+    document.title = `${activeView[0].toUpperCase() + activeView.slice(1)} | SevaLog`;
+  }
+  if (navigate) {
+    if (!$("message").classList.contains("error")) message("");
+    $(views[activeView]).querySelector("h2")?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+    $("account-menu").open = false;
+  }
+}
+document.querySelectorAll("[data-view]").forEach((link) => link.addEventListener("click", (event) => {
+  event.preventDefault();
+  if (!busy) showView(link.dataset.view, true);
+}));
+window.addEventListener("popstate", () => showView(location.hash.slice(1)));
+document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => $(button.dataset.close).close()));
+function setupCircle(mode) {
+  $("create-circle").hidden = mode !== "create";
+  $("join-circle").hidden = mode !== "join";
+  $("circle-dialog-title").textContent = mode === "create" ? "Create circle" : "Join circle";
+  $("circle-setup").showModal();
+}
+$("show-create").addEventListener("click", () => setupCircle("create"));
+$("show-join").addEventListener("click", () => setupCircle("join"));
+$("edit-details").addEventListener("click", () => { $("account-menu").open = false; $("profile-details").showModal(); });
+$("view-timeline").addEventListener("click", () => showView("timeline", true));
+function renderCircles() {
+  $("circle-list").replaceChildren();
+  $("circles-empty").hidden = circles.length > 0;
+  circles.forEach((item) => {
+    const card = document.createElement("article"); card.className = "circle-card";
+    const title = document.createElement("h3"); title.textContent = item.elder_name;
+    const role = document.createElement("p"); role.textContent = item.owner_id === user.id ? "Owner" : "Member";
+    const actions = document.createElement("div"); actions.className = "toolbar";
+    const open = document.createElement("button"); open.className = "primary-button"; open.textContent = "Open";
+    open.setAttribute("aria-label", `Open ${item.elder_name}`);
+    open.addEventListener("click", () => void act(async () => { if (circle?.id !== item.id) await selectCircle(item.id); showView("today", true); }));
+    actions.append(open);
+    if (item.owner_id === user.id) {
+      const invite = document.createElement("button"); invite.className = "secondary-button"; invite.textContent = "Invite family";
+      invite.setAttribute("aria-label", `Invite family to ${item.elder_name}`);
+      invite.addEventListener("click", () => void act(async () => {
+        if (circle?.id !== item.id) await selectCircle(item.id);
+        $("invite-title").textContent = `Invite family to ${item.elder_name}`;
+        $("invite-tools").showModal();
+      }));
+      actions.append(invite);
+    }
+    card.append(title, role, actions); $("circle-list").append(card);
+  });
+}
 let generation = 0, busy = false, recovery = false;
 const today = () => {
   const d = new Date();
@@ -13,6 +88,12 @@ const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ 
 function message(text, error = false) {
   $("message").textContent = text;
   $("message").classList.toggle("error", error);
+  document.querySelectorAll("dialog").forEach((dialog) => {
+    let output = dialog.querySelector(".dialog-message");
+    if (!output) { output = document.createElement("p"); output.className = "dialog-message"; output.setAttribute("role", "status"); dialog.append(output); }
+    output.textContent = dialog.open ? text : "";
+    output.classList.toggle("error", error);
+  });
 }
 async function checked(request) {
   const { data, error } = await request;
@@ -45,7 +126,8 @@ function clearCare() {
   circle = undefined;
   entries = [];
   $("care-workspace").hidden = true;
-  $("invite-tools").hidden = true;
+  document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
+  $("view-timeline").hidden = true;
   invitationToken = "";
   $("invite-result").hidden = true;
   $("invitation-code").textContent = "";
@@ -62,14 +144,17 @@ async function sessionChanged(session) {
   user = next;
   circles = [];
   $("circle-select").replaceChildren();
+  $("circle-list").replaceChildren();
   $("account-email").textContent = user?.email || "";
   $("sign-out").hidden = !user;
   $("auth-panel").hidden = !!user;
-  $("circle-panel").hidden = !user || recovery;
-  $("circle-setup").open = true;
+  $("account-menu").hidden = !user;
+  $("account-menu").open = false;
   $("create-circle").reset();
   updateRecipient();
-  if (!user) { message("Sign in or create an account."); return; }
+  if (!user) { showView("circles"); message("Sign in or create an account."); return; }
+  $("app-nav").hidden = recovery;
+  $("circle-panel").hidden = recovery;
   await loadCircles();
 }
 async function loadCircles(preferred) {
@@ -77,25 +162,26 @@ async function loadCircles(preferred) {
   const data = await checked(db.from("care_circles").select("id,elder_name,owner_id").order("created_at"));
   if (version !== generation || !user) return;
   circles = data;
+  message("");
+  renderCircles();
   $("circle-select").replaceChildren(new Option("Choose a circle", ""));
   circles.forEach((item) => $("circle-select").add(new Option(item.elder_name, item.id)));
-  const selected = circles.find((item) => item.id === preferred) || circles[0];
+  const saved = preferences();
+  const selected = circles.find((item) => item.id === (preferred || saved.circle)) || circles[0];
   if (selected) await selectCircle(selected.id);
   else message("Create a care circle or join one with an invitation code.");
+  showView(preferred ? "today" : views[location.hash.slice(1)] ? location.hash.slice(1) : saved.view || "circles", !!preferred);
 }
 async function selectCircle(id) {
   clearCare();
   circle = circles.find((item) => item.id === id);
   $("circle-select").value = circle?.id || "";
   if (!circle) return;
-  $("circle-setup").open = false;
   $("elder-name").value = circle.elder_name;
   $("elder-name").disabled = circle.owner_id !== user.id;
   $("caregiver-name").value = user.user_metadata?.display_name || "";
-  $("profile-details").open = !$("caregiver-name").value;
   $("entry-time").value = timeNow();
-  $("care-workspace").hidden = false;
-  $("invite-tools").hidden = circle.owner_id !== user.id;
+  showView(activeView);
   await refresh();
 }
 let refreshSequence = 0;
@@ -170,7 +256,7 @@ function validateEntry(entry) {
 async function addEntry() {
   const caregiver = $("caregiver-name").value.trim();
   if (!circle || !caregiver) {
-    $("profile-details").open = true;
+    $("profile-details").showModal();
     throw new Error("Enter your name in Care details first.");
   }
   const entry = validateEntry({ circle_id: circle.id, author_id: user.id, caregiver,
@@ -179,6 +265,7 @@ async function addEntry() {
   await checked(db.from("care_entries").insert(entry));
   $("entry-form").reset(); $("entry-time").value = timeNow();
   message("Update saved for your family."); await refresh();
+  $("view-timeline").hidden = false;
 }
 function updateRecipient() {
   const self = document.querySelector('[name="care-for"]:checked').value === "self";
@@ -202,7 +289,7 @@ on("forgot-password", "click", async () => {
 });
 on("recovery-form", "submit", async () => {
   await checked(db.auth.updateUser({ password: $("new-password").value }));
-  recovery = false; $("recovery-form").reset(); $("recovery-form").hidden = true; $("circle-panel").hidden = false;
+  recovery = false; $("recovery-form").reset(); $("recovery-form").hidden = true; showView(activeView);
   message("Password updated.");
 });
 on("sign-out", "click", async () => {
@@ -219,6 +306,7 @@ on("create-circle", "submit", async () => {
   }
   const id = await checked(db.rpc("create_care_circle", { elder: name }));
   $("create-circle").reset(); updateRecipient(); await loadCircles(id); message("Care circle created.");
+  if (!$("caregiver-name").value) { $("profile-message").textContent = "Your name will appear on the updates you add."; $("profile-details").showModal(); }
 });
 on("join-circle", "submit", async () => {
   const result = await checked(db.rpc("join_care_circle", { invitation: $("invite-code").value.trim().toUpperCase() }));
@@ -253,7 +341,8 @@ on("profile-form", "submit", async () => {
     circle.elder_name = updated.elder_name; $("circle-select").selectedOptions[0].textContent = circle.elder_name;
   }
   if (invitationToken) $("invite-message").textContent = `Join the care circle for ${circle.elder_name} on SevaLog.`;
-  $("profile-details").open = false;
+  $("profile-details").close();
+  renderCircles();
   render(); message("Care details saved.");
 });
 on("entry-form", "submit", addEntry);
@@ -280,7 +369,7 @@ async function start() {
   // Defer database work outside the auth callback to avoid the SDK auth lock.
   db.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY") {
-      recovery = true; $("recovery-form").hidden = false; $("circle-panel").hidden = true;
+      recovery = true; $("recovery-form").hidden = false; showView(activeView);
     }
     setTimeout(() => sessionChanged(session).catch((error) => message(error.message, true)), 0);
   });
