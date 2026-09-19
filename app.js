@@ -28,7 +28,7 @@ function showView(view, navigate = false) {
   if (signedIn) {
     rememberView();
     if (navigate && location.hash !== `#${activeView}`) history.pushState(null, "", `#${activeView}`);
-    document.title = `${activeView[0].toUpperCase() + activeView.slice(1)} | SevaLog`;
+    document.title = `${activeView === "today" ? "Add log" : activeView[0].toUpperCase() + activeView.slice(1)} | SevaLog`;
   }
   if (navigate) {
     if (!$("message").classList.contains("error")) message("");
@@ -351,12 +351,13 @@ on("clear-form", "click", () => { $("entry-form").reset(); $("entry-time").value
 $("filter-type").addEventListener("change", render);
 on("copy-digest", "click", async () => { await navigator.clipboard.writeText(digest()); message("Digest copied."); });
 on("share-whatsapp", "click", () => { window.open(`https://wa.me/?text=${encodeURIComponent(digest())}`, "_blank", "noopener,noreferrer"); });
-[["medicine", "Medicine taken"], ["meal", "Meal update"], ["vitals", "Checked blood pressure"], ["appointment", "Doctor appointment"]].forEach(([type, title]) => {
-  const button = document.createElement("button"); button.type = "button"; button.className = "quick-action"; button.textContent = title;
+[["medicine", "Taken BP tablet"], ["meal", "Breakfast done"], ["vitals", "Checked blood pressure"]].forEach(([type, title]) => {
+  const button = document.createElement("button"); button.type = "button"; button.className = "suggestion-button"; button.textContent = title;
+  button.title = `Use this update: ${title}`;
   button.addEventListener("click", () => {
-    $("entry-type").value = type; $("entry-title").value = title; $("entry-time").value = timeNow(); $("entry-note").focus();
+    $("entry-type").value = type; $("entry-title").value = title; $("entry-title").focus();
   });
-  $("quick-actions").append(button);
+  $("update-suggestions").append(button);
 });
 async function start() {
   window.lucide?.createIcons();

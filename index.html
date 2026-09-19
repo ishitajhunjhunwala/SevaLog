@@ -18,7 +18,7 @@
     </header>
     <nav id="app-nav" aria-label="Main navigation" hidden>
       <a href="#circles" data-view="circles"><i data-lucide="users-round" aria-hidden="true"></i><span>Circles</span></a>
-      <a href="#today" data-view="today"><i data-lucide="sun" aria-hidden="true"></i><span>Today</span></a>
+      <a href="#today" data-view="today"><i data-lucide="notebook-pen" aria-hidden="true"></i><span>Add log</span></a>
       <a href="#timeline" data-view="timeline"><i data-lucide="list-checks" aria-hidden="true"></i><span>Timeline</span></a>
     </nav>
     <div class="page-content">
@@ -44,17 +44,17 @@
         <div id="circle-list" class="circle-list"></div>
       </section>
 
-      <section id="care-workspace" aria-labelledby="today-title" hidden>
-        <div class="page-heading"><h2 id="today-title" tabindex="-1">Today</h2><button id="view-timeline" class="secondary-button" type="button" hidden>View in timeline</button></div>
-        <section class="today-summary" aria-labelledby="setup-title"><h3 id="setup-title">Today at a glance</h3>
+      <section id="care-workspace" aria-labelledby="setup-title" hidden>
+        <section class="today-summary" aria-labelledby="setup-title">
+          <div class="page-heading"><h2 id="setup-title" tabindex="-1">Today at a glance</h2><button id="view-timeline" class="secondary-button" type="button" hidden>View in timeline</button></div>
           <div class="stats"><div><span id="today-count">0</span><p>updates today</p></div><div><span id="med-count">0</span><p>medicine logs</p></div><div><span id="last-log">No logs yet</span><p>last update</p></div></div>
         </section>
-        <section class="log-panel" aria-labelledby="quick-title">
-          <h3 id="quick-title">Quick update</h3><div class="quick-actions" id="quick-actions" aria-label="Quick care updates"></div>
-          <div class="panel-heading detail-heading"><h3>Detailed update</h3><button class="secondary-button" id="clear-form" type="button">Clear</button></div>
+        <section class="log-panel" aria-labelledby="add-update-title">
+          <div class="panel-heading"><h2 id="add-update-title">Add update</h2><button class="secondary-button" id="clear-form" type="button">Clear</button></div>
           <form class="entry-form" id="entry-form">
             <div class="split"><label>Type<select id="entry-type"><option value="medicine">Medicine</option><option value="meal">Meal</option><option value="vitals">Vitals</option><option value="appointment">Appointment</option><option value="note">Note</option></select></label><label>Time<input id="entry-time" type="time" /></label></div>
             <label>Update *<input id="entry-title" autocomplete="off" placeholder="Medicine taken after breakfast" required maxlength="300" /></label>
+            <div class="update-suggestions" id="update-suggestions" role="group" aria-label="Suggested updates"></div>
             <label>Details (optional)<textarea id="entry-note" rows="3" maxlength="4000" placeholder="Dose, reading, food notes, or anything family should know"></textarea></label>
             <button class="primary-button" type="submit">Add to timeline</button><small>* Required fields</small>
           </form>
@@ -85,7 +85,7 @@
     <p id="profile-message"></p>
     <form id="profile-form"><label>Care circle for *<input id="elder-name" required maxlength="100" /></label><label>Your name *<input id="caregiver-name" autocomplete="name" required maxlength="100" /></label><button class="primary-button" type="submit">Save details</button><small>* Required fields</small></form>
   </dialog>
-  <template id="timeline-empty"><li class="empty-state"><h3>No care updates yet</h3><p>Record your first update in Today.</p></li></template>
+  <template id="timeline-empty"><li class="empty-state"><h3>No care updates yet</h3><p>Record your first update in Add log.</p></li></template>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js" defer></script>
   <script src="config.js" defer></script>
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
