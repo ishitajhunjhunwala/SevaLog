@@ -16,6 +16,19 @@
     sans-serif;
 }
 
+[hidden] { display: none !important; }
+#care-workspace { display: grid; gap: 18px; }
+#auth-panel, #recovery-form { max-width: 480px; width: 100%; margin: 12px auto; }
+#auth-panel h2 { margin-bottom: 18px; }
+#circle-panel { display: grid; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.circle-forms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+#message { overflow-wrap: anywhere; }
+#message.error { color: #a51c37; }
+#invite-result { margin-top: 12px; overflow-wrap: anywhere; user-select: all; }
+#account-email, .timeline-copy, .digest-preview { overflow-wrap: anywhere; min-width: 0; }
+button:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 620px) { .circle-forms { grid-template-columns: 1fr; } }
+
 * {
   box-sizing: border-box;
 }

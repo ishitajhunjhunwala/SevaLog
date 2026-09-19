@@ -26,9 +26,40 @@
               <h1 id="app-title">SevaLog</h1>
             </div>
           </div>
-          <button class="ghost-button" id="install-sample" type="button">Load demo</button>
+          <div><span id="account-email"></span> <button class="ghost-button" id="sign-out" type="button" hidden>Sign out</button></div>
         </header>
 
+        <p id="message" role="status" aria-live="polite">Connecting...</p>
+        <section id="auth-panel" hidden>
+          <h2>Sign in to your care circle</h2>
+          <form id="auth-form">
+            <label>Email<input id="email" type="email" autocomplete="email" required /></label>
+            <label>Password<input id="password" type="password" autocomplete="current-password" minlength="8" required /></label>
+            <div class="toolbar">
+              <button class="primary-button" type="submit">Sign in</button>
+              <button class="secondary-button" id="sign-up" type="button">Create account</button>
+              <button class="ghost-button" id="forgot-password" type="button">Forgot password</button>
+            </div>
+          </form>
+        </section>
+        <form id="recovery-form" hidden>
+          <label>New password<input id="new-password" type="password" autocomplete="new-password" minlength="8" required /></label>
+          <button class="primary-button">Update password</button>
+        </form>
+        <section id="circle-panel" hidden>
+          <label>Care circle<select id="circle-select"><option value="">Choose a circle</option></select></label>
+          <div class="circle-forms">
+            <form id="create-circle"><label>Elder name<input id="new-elder" required maxlength="100" /></label><button class="primary-button">Create circle</button></form>
+            <form id="join-circle"><label>Invitation code<input id="invite-code" required autocomplete="off" /></label><button class="secondary-button">Join circle</button></form>
+          </div>
+          <div id="invite-tools" hidden>
+            <button id="make-invite" class="secondary-button" type="button">Create invitation code</button>
+            <p id="invite-result"></p>
+          </div>
+          <button id="refresh" class="ghost-button" type="button">Refresh updates</button>
+        </section>
+
+        <div id="care-workspace" hidden>
         <section class="grid">
           <aside class="panel setup-panel" aria-labelledby="setup-title">
             <div class="panel-heading">
@@ -36,17 +67,17 @@
                 <p class="eyebrow">Care circle</p>
                 <h2 id="setup-title">Today at a glance</h2>
               </div>
-              <span class="status-pill" id="sync-status">Saved on this phone</span>
+              <span class="status-pill" id="sync-status">Connecting</span>
             </div>
 
             <form class="profile-form" id="profile-form">
               <label>
                 Elder name
-                <input id="elder-name" name="elderName" autocomplete="off" placeholder="Amma" />
+                <input id="elder-name" name="elderName" autocomplete="off" placeholder="Amma" required maxlength="100" />
               </label>
               <label>
                 Caregiver
-                <input id="caregiver-name" name="caregiverName" autocomplete="off" placeholder="Meera" />
+                <input id="caregiver-name" name="caregiverName" autocomplete="name" placeholder="Meera" required maxlength="100" />
               </label>
               <button class="primary-button" type="submit">Save care circle</button>
             </form>
@@ -146,8 +177,9 @@
             Import backup
             <input id="import-data" type="file" accept="application/json" />
           </label>
-          <button class="danger-button" id="reset-data" type="button">Reset device data</button>
+          <button class="ghost-button" id="migrate-data" type="button">Import old phone logs</button>
         </section>
+        </div>
       </section>
     </main>
 
@@ -158,6 +190,8 @@
       </li>
     </template>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js" defer></script>
+    <script src="config.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>
